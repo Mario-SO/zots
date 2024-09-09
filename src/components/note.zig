@@ -10,11 +10,11 @@ pub const Note = struct {
     pub fn init(allocator: std.mem.Allocator, title: []const u8) !Note {
         var note = Note{
             .title = [_:0]u8{0} ** 64,
-            .content = try allocator.allocSentinel(u8, 1, 0), // Allocate with just one space
+            .content = try allocator.allocSentinel(u8, 1, 0),
             .allocator = allocator,
         };
         std.mem.copyForwards(u8, &note.title, title[0..@min(title.len, 63)]);
-        note.content[0] = ' '; // Set the content to a single space
+        note.content[0] = 0; // Set the content to an empty string
         return note;
     }
 
@@ -28,11 +28,14 @@ pub const Note = struct {
 
         const stat = try file.stat();
         var note = try Note.init(allocator, fs.path.basename(path));
-        const new_content = try allocator.allocSentinel(u8, stat.size, 0);
-        allocator.free(note.content);
-        note.content = new_content;
-        _ = try file.readAll(note.content[0..stat.size]);
-        note.content[stat.size] = 0; // Ensure null termination
+
+        if (stat.size > 0) {
+            const new_content = try allocator.allocSentinel(u8, stat.size, 0);
+            allocator.free(note.content);
+            note.content = new_content;
+            _ = try file.readAll(note.content[0..stat.size]);
+            note.content[stat.size] = 0; // Ensure null termination
+        }
 
         return note;
     }
